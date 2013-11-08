@@ -228,6 +228,8 @@ uint8_t* sha1_resultHmac(sha1nfo *s) {
 
 int curSeconds=0;
 
+#if 0
+/* not needed anymore, we have time() ! */
 uint32_t get_epoch_seconds(struct tm *current_time) {
 	//PblTm current_time;
 	uint32_t unix_time;
@@ -246,10 +248,10 @@ uint32_t get_epoch_seconds(struct tm *current_time) {
 	unix_time /= 30;
 	return unix_time;
 }
+#endif
 
 void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
-    /* to be cheked - could be much simpler now I guess */
     (void) units_changed;
 	static char tokenText[] = "RYRYRY"; // Needs to be static because it's used by the system later.
 
@@ -261,8 +263,10 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
     time_t current_time ;
 	char sha1_time[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
+    current_time=time(NULL);
+    unix_time=current_time + ((0-tZone)*3600) ;
+    unix_time /= 30;
     if (tick_time == NULL) {
-        current_time=time(NULL) ;
         tick_time = localtime(&current_time);
     }
 	curSeconds = tick_time->tm_sec;
@@ -274,7 +278,7 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 		// TOTP uses seconds since epoch in the upper half of an 8 byte payload
 		// TOTP is HOTP with a time based payload
 		// HOTP is HMAC with a truncation function to get a short decimal key
-		unix_time = get_epoch_seconds(tick_time);
+		//unix_time = get_epoch_seconds(tick_time);
 		sha1_time[4] = (unix_time >> 24) & 0xFF;
 		sha1_time[5] = (unix_time >> 16) & 0xFF;
 		sha1_time[6] = (unix_time >> 8) & 0xFF;
