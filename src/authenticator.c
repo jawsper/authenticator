@@ -4,6 +4,7 @@
 
 // defined in editTzone.c
 extern void showEditTimeZone();
+extern void destroyEditTimeZone();
 
 // Truncate n decimal digits to 2^n for 6 digits
 #define DIGITS_TRUNCATE 1000000
@@ -222,34 +223,6 @@ uint8_t* sha1_resultHmac(sha1nfo *s) {
 
 /* end sha1.c */
 
-
-// return seconds since epoch compensating for Pebble's lack of location
-// independent GMT
-
-int curSeconds=0;
-
-#if 0
-/* not needed anymore, we have time() ! */
-uint32_t get_epoch_seconds(struct tm *current_time) {
-	//PblTm current_time;
-	uint32_t unix_time;
-	//get_time(&current_time);
-	
-// shamelessly stolen from WhyIsThisOpen's Unix Time source: http://forums.getpebble.com/discussion/4324/watch-face-unix-time
-	/* Convert time to seconds since epoch. */
-	//curSeconds=current_time.tm_sec;
-	unix_time = ((0-tZone)*3600) + /* time zone offset */          /* 0-tZone+current_time.tm_isdst if it ever starts working. */
-		+ current_time->tm_sec /* start with seconds */
-		+ current_time->tm_min*60 /* add minutes */
-		+ current_time->tm_hour*3600 /* add hours */
-		+ current_time->tm_yday*86400 /* add days */
-		+ (current_time->tm_year-70)*31536000 /* add years since 1970 */
-		+ ((current_time->tm_year-69)/4)*86400 /* add a day after leap years, starting in 1973 */                                                                       - ((current_time->tm_year-1)/100)*86400 /* remove a leap day every 100 years, starting in 2001 */                                                               + ((current_time->tm_year+299)/400)*86400; /* add a leap day back every 400 years, starting in 2001*/
-	unix_time /= 30;
-	return unix_time;
-}
-#endif
-
 void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
     (void) units_changed;
@@ -262,9 +235,10 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 	uint32_t unix_time;
     time_t current_time ;
 	char sha1_time[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    int curSeconds;
 
     current_time=time(NULL);
-    unix_time=current_time + ((0-tZone)*3600) ;
+    unix_time=current_time + ((0-tZone)*3600) ; //still needed because time() is not GMT
     unix_time /= 30;
     if (tick_time == NULL) {
         tick_time = localtime(&current_time);
@@ -278,7 +252,6 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 		// TOTP uses seconds since epoch in the upper half of an 8 byte payload
 		// TOTP is HOTP with a time based payload
 		// HOTP is HMAC with a truncation function to get a short decimal key
-		//unix_time = get_epoch_seconds(tick_time);
 		sha1_time[4] = (unix_time >> 24) & 0xFF;
 		sha1_time[5] = (unix_time >> 16) & 0xFF;
 		sha1_time[6] = (unix_time >> 8) & 0xFF;
@@ -346,7 +319,7 @@ void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	(void)recognizer;
 	(void)context;
 
-	//showEditTimeZone();
+	showEditTimeZone();
 }
 
 void click_config_provider(void *context) {
@@ -399,6 +372,8 @@ void handle_init(void) {
 
 void handle_deinit(void) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "deinit called");
+    
+    destroyEditTimeZone();
     tick_timer_service_unsubscribe();
     text_layer_destroy(label) ;
     text_layer_destroy(token) ;
