@@ -16,8 +16,15 @@ Window *window;
 TextLayer *label;
 TextLayer *token;
 TextLayer *ticker;
-int curToken = 0;
+
+#define KEY_CURTOKEN 1
+int curToken;
+int curToken_orig;
+
+#define KEY_TZONE 2
 int tZone;
+int tZone_orig; //used to track config changes
+
 bool changed;
 
 /* from sha1.c from liboauth */
@@ -333,7 +340,14 @@ void click_config_provider(void *context) {
 
 void handle_init(void) {
 
-	tZone = DEFAULT_TIME_ZONE;
+    // get timezone from persistent storage, if found
+	tZone = persist_exists(KEY_TZONE) ? persist_read_int(KEY_TZONE) : DEFAULT_TIME_ZONE;
+    tZone_orig=tZone ;
+    
+    // get saved current token
+    curToken = persist_exists(KEY_CURTOKEN) ? persist_read_int(KEY_CURTOKEN) : 0 ;
+    curToken_orig = curToken;
+    
 	changed = true;
 
 	window = window_create();
@@ -372,6 +386,18 @@ void handle_init(void) {
 
 void handle_deinit(void) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "deinit called");
+    
+    //store timezone in persistence storage if needed
+    if (tZone != tZone_orig) {
+        if (tZone == DEFAULT_TIME_ZONE) persist_delete(KEY_TZONE) ;
+        else persist_write_int(KEY_TZONE, tZone) ;
+    }
+    
+    //save selected token
+    if (curToken != curToken_orig) {
+        if (curToken == 0) persist_delete(KEY_CURTOKEN);
+        else persist_write_int(KEY_CURTOKEN, curToken);
+    }
     
     destroyEditTimeZone();
     tick_timer_service_unsubscribe();

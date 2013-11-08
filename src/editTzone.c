@@ -6,7 +6,6 @@ extern bool changed;
 Window *setZoneW=NULL;
 TextLayer *setZoneW_zone;
 TextLayer *setZoneW_label;
-TextLayer *setZoneW_disclaim;
 
 char gmt[7];
 
@@ -86,24 +85,12 @@ void create_setZoneW() {
     
 	layer_add_child(setZoneW_layer, text_layer_get_layer(setZoneW_label));
     
-	setZoneW_disclaim=text_layer_create(GRect(0,168-31,144,30));
-    
-	text_layer_set_text(            setZoneW_disclaim, "Not Persistant");
-	text_layer_set_font(            setZoneW_disclaim,
-                        fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
-	text_layer_set_text_alignment(  setZoneW_disclaim, GTextAlignmentCenter);
-	text_layer_set_text_color(      setZoneW_disclaim, GColorWhite);
-	text_layer_set_background_color(setZoneW_disclaim, GColorBlack);
-    
-	layer_add_child(setZoneW_layer, text_layer_get_layer(setZoneW_disclaim));
-    
 	window_set_click_config_provider(setZoneW, (ClickConfigProvider) zone_click_config_provider);
 }
 
 void destroyEditTimeZone() {
     if (setZoneW == NULL) return ;
     
-    text_layer_destroy(setZoneW_disclaim) ;
     text_layer_destroy(setZoneW_label);
     text_layer_destroy(setZoneW_zone);
     window_destroy(setZoneW);
