@@ -1,14 +1,12 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include <pebble.h>
 
 extern int tZone;
 extern bool changed;
 
-Window setZoneW;
-TextLayer setZoneW_zone;
-TextLayer setZoneW_label;
-TextLayer setZoneW_disclaim;
+Window *setZoneW;
+TextLayer *setZoneW_zone;
+TextLayer *setZoneW_label;
+TextLayer *setZoneW_disclaim;
 
 char gmt[7];
 
@@ -28,7 +26,7 @@ char* itoa2(int valIN, int base){ // 2 in the morning hack
 	return &buf2[i];
 	
 }
-
+#if 0
 void zone_up(ClickRecognizerRef recognizer, Window *window) {
 	(void)recognizer;
 	(void)window;
@@ -98,3 +96,4 @@ void showEditTimeZone()
 
 	changed = true;
 }
+#endif
