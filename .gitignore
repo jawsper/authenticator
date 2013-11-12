@@ -8,9 +8,12 @@
 build
 .lock-waf*
 
+# Ignore vi backups
+*~
+
 # Ignore linked files/directories
 waf
-wscript
+resources/wscript
 tools
 include
 lib
