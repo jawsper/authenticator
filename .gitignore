@@ -8,6 +8,9 @@
 build
 .lock-waf*
 
+# Ignore xcode project
+Pebble Authenticator
+
 # Ignore linked files/directories
 waf
 wscript
