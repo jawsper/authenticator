@@ -3,12 +3,16 @@
   "shortName": "Authenticator",
   "longName": "Authenticator",
   "companyName": "pokey9000/IEF/rigel314",
-  "versionCode": 1,
-  "versionLabel": "1.1.0",
+  "versionCode": 2,
+  "versionLabel": "2.0.0",
+  "capabilities": [ "configurable" ],
   "watchapp": {
     "watchface": false
   },
-  "appKeys": {},
+  "appKeys": {
+      "timezone" :0,
+      "secrets"  :1
+  },
   "resources": {
     "media": [
       {

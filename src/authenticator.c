@@ -22,7 +22,7 @@ int curToken;
 int curToken_orig;
 
 #define KEY_TZONE 2
-int tZone;
+int tZone; // timeZone in minutes
 int tZone_orig; //used to track config changes
 
 bool changed;
@@ -72,6 +72,10 @@ typedef struct sha1nfo {
 
 char* itoa(int val, int base){
 	static char buf[32] = {0};
+    if (val==0) {
+        strcpy(buf, "0") ;
+        return buf ;
+    }
 	int i = 30;
 	for(; val && i ; --i, val /= base)
 		buf[i] = "0123456789abcdef"[val % base];
@@ -245,7 +249,7 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
     int curSeconds;
 
     current_time=time(NULL);
-    unix_time=current_time + ((0-tZone)*3600) ; //still needed because time() is not GMT
+    unix_time=current_time + ((0-tZone)*60) ; //still needed because time() is not GMT
     unix_time /= 30;
     if (tick_time == NULL) {
         tick_time = localtime(&current_time);
@@ -337,6 +341,40 @@ void click_config_provider(void *context) {
     window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
 }
 
+// keys for App messages (also see appinfo.json)
+#define AKEY_TIMEZONE 0
+#define AKEY_SECRETS  1
+
+// Callbaks for App messages
+void out_sent_handler(DictionaryIterator *sent, void *context) {
+    // outgoing message was delivered
+}
+
+
+void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
+    // outgoing message failed
+}
+
+
+void in_received_handler(DictionaryIterator *received, void *context) {
+    // incoming message received
+    
+    // Check for fields you expect to receive
+    Tuple *timezone_tuple = dict_find(received, AKEY_TIMEZONE);
+    
+    // Act on the found fields received
+    if (timezone_tuple) {
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Timezone Tuple: length=%d, type=%d", timezone_tuple->length, timezone_tuple->type);
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Timezone: %ld", timezone_tuple->value->int32);
+        tZone=timezone_tuple->value->int32 ;
+        changed=true;
+        handle_second_tick(NULL, SECOND_UNIT);
+    }
+}
+
+void in_dropped_handler(AppMessageResult reason, void *context) {
+    // incoming message dropped
+}
 
 void handle_init(void) {
 
@@ -382,6 +420,15 @@ void handle_init(void) {
 	layer_add_child(window_layer, text_layer_get_layer(ticker));
 
     window_set_click_config_provider(window, (ClickConfigProvider) click_config_provider);
+    
+    // setup communication with the phone (for configuration)
+    app_message_register_inbox_received(in_received_handler);
+    app_message_register_inbox_dropped(in_dropped_handler);
+    app_message_register_outbox_sent(out_sent_handler);
+    app_message_register_outbox_failed(out_failed_handler);
+    const uint32_t inbound_size = 64;
+    const uint32_t outbound_size = 64;
+    app_message_open(inbound_size, outbound_size);
 }
 
 void handle_deinit(void) {

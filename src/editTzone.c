@@ -7,32 +7,51 @@ Window *setZoneW=NULL;
 TextLayer *setZoneW_zone;
 TextLayer *setZoneW_label;
 
-char gmt[7];
+char gmt[10];
 
-char* itoa2(int valIN, int base){ // 2 in the morning hack
-	static char buf2[32] = {0};
-	int i = 30;
-	int val = abs(valIN);
+extern char* itoa(int val, int base);
 
-	for(; val && i ; --i, val /= base)
-		buf2[i] = "0123456789abcdef"[val % base];
-	if(valIN<0)
-		buf2[i] = '-';
-	else if(valIN>0)
-		buf2[i] = '+';
-	if(valIN == 0)
-		return &buf2[i+1];
-	return &buf2[i];
-	
+//! Writes the offset using format (+/-)HH:MM into s.
+//! Will write '+1H30' in s if val=90
+//! @return s
+//! @param val offset in minutes
+//! @param s   string to copy
+
+char * min_to_hour(char *s,int val) {
+    if (val==0) {
+        *s='\0';
+        return s;
+    }
+
+    char *p=s;
+    // add sign
+    *p++= (val < 0) ? '-' : '+' ;
+    
+    val=abs(val);
+    // add hours
+    char *hour=itoa(val / 60, 10) ;
+    strcpy(p, hour) ;
+    p+=strlen(hour) ;
+    
+    //add minutes
+    int min=val % 60;
+    if (min==0) return s;
+    *p++='H' ;
+    strcpy(p, itoa(min, 10));
+    
+    return s;
 }
 
 void zone_up(ClickRecognizerRef recognizer, void *context) {
 	(void)recognizer;
 	(void)context;
 
-	if(tZone<24)
-		tZone++;
-	strcpy(gmt+3, itoa2(tZone,10));
+	if(tZone<=14*60) {
+        tZone+=(click_number_of_clicks_counted(recognizer) > 1) ? 60: 30;
+    } else {
+        vibes_short_pulse();
+    }
+    min_to_hour(gmt+3, tZone);
 	text_layer_set_text(setZoneW_zone, gmt);
 	changed = true;
 }
@@ -41,9 +60,12 @@ void zone_down(ClickRecognizerRef recognizer, void *context) {
 	(void)recognizer;
 	(void)context;
 
-	if(tZone>-24)
-		tZone--;
-	strcpy(gmt+3, itoa2(tZone,10));
+	if(tZone>=-11*60) {
+		tZone-=(click_number_of_clicks_counted(recognizer) > 1) ? 60: 30;
+    } else {
+        vibes_short_pulse() ;
+    }
+	min_to_hour(gmt+3, tZone);
 	text_layer_set_text(setZoneW_zone, gmt);
 	changed = true;
 }
@@ -52,7 +74,7 @@ void zone_click_config_provider(void *context) {
 
 	window_single_repeating_click_subscribe(BUTTON_ID_UP,   100, zone_up);
 	window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, zone_down);
-    
+
 }
 
 void create_setZoneW() {
@@ -61,14 +83,14 @@ void create_setZoneW() {
 	window_set_background_color(setZoneW, GColorBlack);
     
 	strcpy(gmt, "UTC");
-	strcpy(gmt+3, itoa2(tZone,10));
+	min_to_hour(gmt+3, tZone);
     
-	setZoneW_zone=text_layer_create(GRect(0,50,144,48));
+	setZoneW_zone=text_layer_create(GRect(20,50,144,48));
 	
     text_layer_set_text(            setZoneW_zone, gmt);
 	text_layer_set_font(            setZoneW_zone,
                         fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
-	text_layer_set_text_alignment(  setZoneW_zone, GTextAlignmentCenter);
+	text_layer_set_text_alignment(  setZoneW_zone, GTextAlignmentLeft);
 	text_layer_set_text_color(      setZoneW_zone, GColorWhite);
 	text_layer_set_background_color(setZoneW_zone, GColorBlack);
 	
@@ -100,7 +122,13 @@ void destroyEditTimeZone() {
 void showEditTimeZone()
 {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "showEditTimeZone: setZoneW==%p", setZoneW);
-    if (setZoneW == NULL) create_setZoneW();
+    if (setZoneW == NULL) {
+        create_setZoneW();
+    } else {
+        // tZone may have changed via JS-config
+        min_to_hour(gmt+3, tZone);
+        text_layer_set_text(setZoneW_zone, gmt);
+    }
 	window_stack_push(setZoneW, true);
 
 	changed = true;
