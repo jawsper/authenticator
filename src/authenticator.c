@@ -376,6 +376,45 @@ void in_dropped_handler(AppMessageResult reason, void *context) {
     // incoming message dropped
 }
 
+void log_handler_called(char *name) {
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "handler called: %s", name);
+}
+
+void load_handler(struct Window *w) {
+    log_handler_called("load");
+}
+
+void appear_handler(struct Window *w) {
+    log_handler_called("appear");
+    static int old_timezone=255; // on-purpose invalid value
+    // check if tZone has changed
+    if (tZone != old_timezone) {
+        //store to phone
+        DictionaryIterator *iter;
+        app_message_outbox_begin(&iter);
+        Tuplet value = TupletInteger(AKEY_TIMEZONE, tZone);
+        dict_write_tuplet(iter, &value);
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Timezone has changed on Pebble, sending %d to phone", tZone);
+        app_message_outbox_send();
+        old_timezone=tZone ;
+    }
+}
+
+void disappear_handler(struct Window *w) {
+    log_handler_called("disappear");
+}
+
+void unload_handler(struct Window *w) {
+    log_handler_called("unload");
+}
+
+static struct WindowHandlers window_handlers={
+    .load       =     load_handler,
+    .appear     =   appear_handler,
+    .disappear  =disappear_handler,
+    .unload     =   unload_handler,
+};
+
 void handle_init(void) {
 
     // get timezone from persistent storage, if found
@@ -389,6 +428,7 @@ void handle_init(void) {
 	changed = true;
 
 	window = window_create();
+    window_set_window_handlers(window, window_handlers);
     window_stack_push(window, true /* Animated */);
 	window_set_background_color(window, GColorBlack);
 
@@ -437,7 +477,12 @@ void handle_deinit(void) {
     //store timezone in persistence storage if needed
     if (tZone != tZone_orig) {
         if (tZone == DEFAULT_TIME_ZONE) persist_delete(KEY_TZONE) ;
-        else persist_write_int(KEY_TZONE, tZone) ;
+        else {
+            // store to watch
+            persist_write_int(KEY_TZONE, tZone) ;
+            
+            // storing to phone here has no effect (the message is never received by the JS)
+        }
     }
     
     //save selected token

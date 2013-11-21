@@ -12,12 +12,12 @@ char gmt[10];
 extern char* itoa(int val, int base);
 
 //! Writes the offset using format (+/-)HH:MM into s.
-//! Will write '+1H30' in s if val=90
+//! Will write '+01H30' in s if val=90
 //! @return s
 //! @param val offset in minutes
 //! @param s   string to copy
 
-char * min_to_hour(char *s,int val) {
+char * min_to_hour(char *s,size_t max, int val) {
     if (val==0) {
         *s='\0';
         return s;
@@ -26,19 +26,12 @@ char * min_to_hour(char *s,int val) {
     char *p=s;
     // add sign
     *p++= (val < 0) ? '-' : '+' ;
-    
+    max--;
     val=abs(val);
-    // add hours
-    char *hour=itoa(val / 60, 10) ;
-    strcpy(p, hour) ;
-    p+=strlen(hour) ;
     
-    //add minutes
-    int min=val % 60;
-    if (min==0) return s;
-    *p++='H' ;
-    strcpy(p, itoa(min, 10));
-    
+    struct tm to_convert={.tm_min=val%60,.tm_hour=val/60,
+        .tm_isdst=0,.tm_gmtoff=0};
+    strftime(p, max, "%H:%M", &to_convert);
     return s;
 }
 
@@ -51,7 +44,7 @@ void zone_up(ClickRecognizerRef recognizer, void *context) {
     } else {
         vibes_short_pulse();
     }
-    min_to_hour(gmt+3, tZone);
+    min_to_hour(gmt+3, 7, tZone);
 	text_layer_set_text(setZoneW_zone, gmt);
 	changed = true;
 }
@@ -65,7 +58,7 @@ void zone_down(ClickRecognizerRef recognizer, void *context) {
     } else {
         vibes_short_pulse() ;
     }
-	min_to_hour(gmt+3, tZone);
+	min_to_hour(gmt+3, 7, tZone);
 	text_layer_set_text(setZoneW_zone, gmt);
 	changed = true;
 }
@@ -83,7 +76,7 @@ void create_setZoneW() {
 	window_set_background_color(setZoneW, GColorBlack);
     
 	strcpy(gmt, "UTC");
-	min_to_hour(gmt+3, tZone);
+	min_to_hour(gmt+3, 7,tZone);
     
 	setZoneW_zone=text_layer_create(GRect(20,50,144,48));
 	
@@ -126,7 +119,7 @@ void showEditTimeZone()
         create_setZoneW();
     } else {
         // tZone may have changed via JS-config
-        min_to_hour(gmt+3, tZone);
+        min_to_hour(gmt+3, 7, tZone);
         text_layer_set_text(setZoneW_zone, gmt);
     }
 	window_stack_push(setZoneW, true);
