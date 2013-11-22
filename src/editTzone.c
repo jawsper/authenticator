@@ -9,14 +9,11 @@ TextLayer *setZoneW_label;
 
 char gmt[10];
 
-extern char* itoa(int val, int base);
-
 //! Writes the offset using format (+/-)HH:MM into s.
 //! Will write '+01H30' in s if val=90
 //! @return s
 //! @param val offset in minutes
 //! @param s   string to copy
-
 char * min_to_hour(char *s,size_t max, int val) {
     if (val==0) {
         *s='\0';

@@ -1,4 +1,5 @@
 var initialized = false;
+var timezone=null ;
 
 //! Event Listener : "ready"
 //! Called at initialisation of the app, this is where initalization must be done.
@@ -9,8 +10,9 @@ function readyEventListener() {
     var options={} ;
     
     //Load config
-    var timezone = parseInt(window.localStorage.getItem('timezone'));
-    if (!isNaN(timezone)) {
+    var stored_timezone = parseInt(window.localStorage.getItem('timezone'),10);
+    if (!isNaN(stored_timezone)) {
+        timezone=stored_timezone;
         options["timezone"]=timezone;
         console.log("added " + timezone + " to options");
     }
@@ -24,7 +26,10 @@ Pebble.addEventListener("ready", readyEventListener);
 //! called when the user presses the config button on the phone app.
 function showConfigurationEventListener() {
     console.log("showing configuration");
-    Pebble.openURL('http://darenzana.free.fr/Pebble/Authenticator/index-dev.html');
+    var confURL="http://darenzana.free.fr/Pebble/Authenticator/index-dev.html" ;
+    if (!isNaN(timezone)) confURL += "?timezone=" + timezone ;
+    console.log("URL :" + confURL);
+    Pebble.openURL(confURL);
 }
 Pebble.addEventListener("showConfiguration", showConfigurationEventListener);
 
@@ -42,14 +47,15 @@ function appMessageNack(e) {
 function storeOption(key, value) {
     window.localStorage.setItem(key, value.toString());
     console.log("stored " + key + ": " + value.toString());
+    if (key == 'timezone') timezone=value ;
 }
 
-//! webviewclosed
+//! Event listener: webviewclosed
 //! called when user presses the 'done' button on the settings screen
 function webviewclosedEventListener(e) {
     console.log("configuration closed");
     // webview closed
-    if (e.response != '') {
+    if (e.response) {
         var options = JSON.parse(decodeURIComponent(e.response));
         console.log("storing options: " + JSON.stringify(options));
         
