@@ -17,6 +17,8 @@ Window *window;
 TextLayer *label;
 TextLayer *token;
 TextLayer *ticker;
+InverterLayer *bar;
+
 
 #define KEY_CURTOKEN 1
 int curToken;
@@ -27,6 +29,57 @@ int tZone; // timeZone in minutes
 int tZone_orig; //used to track config changes
 
 bool changed;
+
+
+//! Creates progress bar animation
+//! @param second the ticker second (0 < s <= 30)
+//! @see animate_bar()
+//! @return the newly created *PropertyAnimation
+PropertyAnimation * create_bar_animation(int second) {
+
+    PropertyAnimation *bar_animation;
+    GRect from_frame = layer_get_frame(text_layer_get_layer(ticker));
+    from_frame.origin.x=0;
+    from_frame.origin.y=5;
+    from_frame.size.h -= 10;
+    from_frame.size.w  = second * from_frame.size.w / 30;
+    
+    GRect to_frame = from_frame ;
+    to_frame.size.w=0 ;
+    
+    bar_animation = property_animation_create_layer_frame(inverter_layer_get_layer(bar), &from_frame, &to_frame);
+    animation_set_duration((Animation *)bar_animation, second * 1000);
+    animation_set_delay((Animation *)bar_animation, 0);
+    animation_set_curve((Animation *)bar_animation, AnimationCurveLinear);
+    return bar_animation;
+}
+
+//! Animates progress bar
+//! @param second the ticker second (0 < s <= 30)
+void animate_bar(int second) {
+    static PropertyAnimation *bar_animation=NULL;
+    static bool fullanimation=false ;
+    
+    //first call, create and run partial bar
+    if (bar_animation == NULL) {
+        bar_animation = create_bar_animation(second);
+        if (second ==30) fullanimation=true ;
+        animation_schedule((Animation *)bar_animation);
+        return;
+    }
+    
+    // we only need to relaunch animation every 30 seconds.
+    if (second != 30) return ;
+    
+    // partial animation is finished, now create full animation
+    if (!fullanimation) {
+        property_animation_destroy(bar_animation) ;
+        bar_animation = create_bar_animation(30);
+        fullanimation = true ;
+    }
+    
+    animation_schedule((Animation *)bar_animation);
+}
 
 void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
@@ -84,13 +137,14 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 		text_layer_set_text(label, otplabels[curToken]);
 		text_layer_set_text(token, tokenText);
 	}
-
-	if ((curSeconds>=0) && (curSeconds<30)) {
-        snprintf(tickerText, 3, "%02d", 30-curSeconds) ;
-	} else {
-        snprintf(tickerText, 3, "%02d", 60-curSeconds) ;
-	}
+    
+    int tickerInt= curSeconds < 30 ? 30 - curSeconds : 60 - curSeconds ;
+    
+    snprintf(tickerText, 3, "%02d", tickerInt) ;
     text_layer_set_text(ticker, tickerText);
+    
+    // progress bar animation
+    animate_bar(tickerInt);
 }
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -239,11 +293,18 @@ void init(void) {
 	text_layer_set_font(token, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
 
 	// Init the second ticker
-	ticker=text_layer_create(GRect(60, 120, 144-4 /* width */, 168-44 /* height */));
+	ticker=text_layer_create(GRect(0, 120, 144 /* width */, 24 /* height */));
 	text_layer_set_text_color(ticker, GColorWhite);
-	text_layer_set_background_color(ticker, GColorClear);
+	text_layer_set_background_color(ticker, GColorBlack);
 	text_layer_set_font(ticker, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-
+    text_layer_set_text_alignment(ticker, GTextAlignmentCenter);
+    
+    //Init inverter layer for the progress bar
+    struct GRect barRect=layer_get_frame(text_layer_get_layer(ticker));
+    barRect.origin=GPointZero;
+    bar=inverter_layer_create(barRect);
+    layer_add_child(text_layer_get_layer(ticker), inverter_layer_get_layer(bar));
+    
 	handle_second_tick(NULL, SECOND_UNIT);
 
     Layer *window_layer=window_get_root_layer(window);
@@ -272,7 +333,6 @@ void deinit(void) {
         else {
             // store to watch
             persist_write_int(KEY_TZONE, tZone) ;
-            
             // storing to phone here has no effect (the message is never received by the JS)
         }
     }
