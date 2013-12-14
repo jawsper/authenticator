@@ -6,19 +6,22 @@ var timezone=null ;
 function readyEventListener() {
     console.log("ready called!");
     initialized=true ;
-    
+    var found_options=false ;
     var options={} ;
     
     //Load config
     var stored_timezone = parseInt(window.localStorage.getItem('timezone'),10);
     if (!isNaN(stored_timezone)) {
+        found_options=true ;
         timezone=stored_timezone;
         options["timezone"]=timezone;
         console.log("added " + timezone + " to options");
     }
-
-    console.log("sending options:" + JSON.stringify(options));
-    Pebble.sendAppMessage(options, appMessageAck, appMessageNack) ;
+    
+    if (found_options) {
+        console.log("sending options:" + JSON.stringify(options));
+        Pebble.sendAppMessage(options, appMessageAck, appMessageNack) ;
+    }
 }
 Pebble.addEventListener("ready", readyEventListener);
 
@@ -40,7 +43,7 @@ function appMessageAck(e) {
 
 // called after a failed send
 function appMessageNack(e) {
-    console.log("options not sent to Pebble: " + e.error.message);
+    console.log("options not sent to Pebble. e is " + JSON.stringify(e)) ;
 }
 
 //store an option to localstorage

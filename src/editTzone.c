@@ -1,7 +1,10 @@
 #include <pebble.h>
+#include "constants.h"
+#include "utils.h"
 
 extern int tZone;
 extern bool changed;
+static int old_tZone;
 
 Window *setZoneW=NULL;
 TextLayer *setZoneW_zone;
@@ -9,11 +12,12 @@ TextLayer *setZoneW_label;
 
 char gmt[10];
 
-//! Writes the offset using format (+/-)HH:MM into s.
-//! Will write '+01H30' in s if val=90
-//! @return s
-//! @param val offset in minutes
-//! @param s   string to copy
+/** Writes the offset using format (+/-)HH:MM into s.
+ * Will write '+01H30' in s if val=90
+ * @return s
+ * @param val offset in minutes
+ * @param s   string to copy
+ */
 char * min_to_hour(char *s,size_t max, int val) {
     if (val==0) {
         *s='\0';
@@ -67,8 +71,40 @@ void zone_click_config_provider(void *context) {
 
 }
 
+void etz_appear_handler() {
+    log_handler_called("etz_appear") ;
+    old_tZone=tZone ;
+}
+
+void etz_disappear_handler(struct Window *w) {
+    log_handler_called("etz_disappear");
+    // check if tZone has changed
+    if (tZone != old_tZone) {
+        //store to phone
+        DictionaryIterator *iter;
+        app_message_outbox_begin(&iter);
+        Tuplet value = TupletInteger(AKEY_TIMEZONE, tZone);
+        dict_write_tuplet(iter, &value);
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Timezone has changed on Pebble, sending %d to phone", tZone);
+        app_message_outbox_send();
+        
+        //store to watch
+        persist_write_int(KEY_TZONE, tZone) ;
+        
+        old_tZone=tZone ;
+    }
+}
+
 void create_setZoneW() {
+    static struct WindowHandlers window_handlers={
+        .load       = NULL,
+        .appear     = etz_appear_handler,
+        .disappear  = etz_disappear_handler,
+        .unload     = NULL,
+    };
+    
     setZoneW=window_create();
+    window_set_window_handlers(setZoneW, window_handlers);
     Layer *setZoneW_layer=window_get_root_layer(setZoneW);
 	window_set_background_color(setZoneW, GColorBlack);
     

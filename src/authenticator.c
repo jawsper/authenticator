@@ -1,7 +1,9 @@
 #include <pebble.h>
 
 #include "configuration.h"
+#include "constants.h"
 #include "sha1.h"
+#include "utils.h"
 
 // defined in editTzone.c
 extern void showEditTimeZone();
@@ -19,22 +21,19 @@ TextLayer *token;
 TextLayer *ticker;
 InverterLayer *bar;
 
-
-#define KEY_CURTOKEN 1
 int curToken;
 int curToken_orig;
 
-#define KEY_TZONE 2
 int tZone; // timeZone in minutes
-int tZone_orig; //used to track config changes
 
 bool changed;
 
 
-//! Creates progress bar animation
-//! @param second the ticker second (0 < s <= 30)
-//! @see animate_bar()
-//! @return the newly created *PropertyAnimation
+/** Creates progress bar animation
+ * @param second the ticker second (0 < s <= 30)
+ * @see animate_bar()
+ * @return the newly created *PropertyAnimation
+ */
 PropertyAnimation * create_bar_animation(int second) {
 
     PropertyAnimation *bar_animation;
@@ -54,8 +53,9 @@ PropertyAnimation * create_bar_animation(int second) {
     return bar_animation;
 }
 
-//! Animates progress bar
-//! @param second the ticker second (0 < s <= 30)
+/** Animates progress bar
+ * @param second the ticker second (0 < s <= 30)
+ */
 void animate_bar(int second) {
     static PropertyAnimation *bar_animation=NULL;
     static bool fullanimation=false ;
@@ -136,6 +136,9 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
 		text_layer_set_text(label, otplabels[curToken]);
 		text_layer_set_text(token, tokenText);
+        
+        //set backlight on for a short period of time
+        light_enable_interaction();
 	}
     
     int tickerInt= curSeconds < 30 ? 30 - curSeconds : 60 - curSeconds ;
@@ -177,20 +180,10 @@ void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 void click_config_provider(void *context) {
-
-    // window_set_click_context(BUTTON_ID_UP, context);
     window_single_repeating_click_subscribe(BUTTON_ID_UP,   100,   up_single_click_handler);
     window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, down_single_click_handler);
     window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
 }
-
-void log_handler_called(char *name) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "handler called: %s", name);
-}
-
-// keys for App messages (also see appinfo.json)
-#define AKEY_TIMEZONE 0
-#define AKEY_SECRETS  1
 
 // Callbaks for App messages
 void out_sent_handler(DictionaryIterator *sent, void *context) {
@@ -225,47 +218,10 @@ void in_dropped_handler(AppMessageResult reason, void *context) {
     log_handler_called("in_dropped");
 }
 
-// Callbacks for window events
-void load_handler(struct Window *w) {
-    log_handler_called("load");
-}
-
-void appear_handler(struct Window *w) {
-    log_handler_called("appear");
-    static int old_timezone=255; // on-purpose invalid value
-    // check if tZone has changed
-    if (tZone != old_timezone) {
-        //store to phone
-        DictionaryIterator *iter;
-        app_message_outbox_begin(&iter);
-        Tuplet value = TupletInteger(AKEY_TIMEZONE, tZone);
-        dict_write_tuplet(iter, &value);
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Timezone has changed on Pebble, sending %d to phone", tZone);
-        app_message_outbox_send();
-        old_timezone=tZone ;
-    }
-}
-
-void disappear_handler(struct Window *w) {
-    log_handler_called("disappear");
-}
-
-void unload_handler(struct Window *w) {
-    log_handler_called("unload");
-}
-
-static struct WindowHandlers window_handlers={
-    .load       =     load_handler,
-    .appear     =   appear_handler,
-    .disappear  =disappear_handler,
-    .unload     =   unload_handler,
-};
 
 void init(void) {
-
     // get timezone from persistent storage, if found
 	tZone = persist_exists(KEY_TZONE) ? persist_read_int(KEY_TZONE) : DEFAULT_TIME_ZONE;
-    tZone_orig=tZone ;
     
     // get saved current token
     curToken = persist_exists(KEY_CURTOKEN) ? persist_read_int(KEY_CURTOKEN) : 0 ;
@@ -274,30 +230,25 @@ void init(void) {
 	changed = true;
 
 	window = window_create();
-    window_set_window_handlers(window, window_handlers);
     window_stack_push(window, true /* Animated */);
 	window_set_background_color(window, GColorBlack);
+    Layer *window_layer=window_get_root_layer(window);
 
 	// Init the identifier label
-    label=text_layer_create(GRect(5, 30, 144-4, 168-44));
-
-	text_layer_set_text_color(label, GColorWhite);
-	text_layer_set_background_color(label, GColorClear);
-	text_layer_set_font(label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
-
-    
+    label=text_layer_create_with_options(window_layer,
+                             GRect(5, 30, 144-4, 168-44),
+                             GColorWhite, GColorClear, GTextAlignmentLeft,
+                             FONT_KEY_GOTHIC_28_BOLD);
 	// Init the token label
-	token=text_layer_create(GRect(10, 60, 144-4 /* width */, 168-44 /* height */));
-	text_layer_set_text_color(token, GColorWhite);
-	text_layer_set_background_color(token, GColorClear);
-	text_layer_set_font(token, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
-
+	token=text_layer_create_with_options(window_layer,
+                             GRect(10, 60, 144-4, 168-44),
+                             GColorWhite, GColorClear, GTextAlignmentLeft,
+                             FONT_KEY_BITHAM_34_MEDIUM_NUMBERS);
 	// Init the second ticker
-	ticker=text_layer_create(GRect(0, 120, 144 /* width */, 24 /* height */));
-	text_layer_set_text_color(ticker, GColorWhite);
-	text_layer_set_background_color(ticker, GColorBlack);
-	text_layer_set_font(ticker, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-    text_layer_set_text_alignment(ticker, GTextAlignmentCenter);
+	ticker=text_layer_create_with_options(window_layer,
+                             GRect(0, 120, 144, 24),
+                             GColorWhite, GColorBlack, GTextAlignmentCenter,
+                             FONT_KEY_GOTHIC_18_BOLD);
     
     //Init inverter layer for the progress bar
     struct GRect barRect=layer_get_frame(text_layer_get_layer(ticker));
@@ -306,11 +257,6 @@ void init(void) {
     layer_add_child(text_layer_get_layer(ticker), inverter_layer_get_layer(bar));
     
 	handle_second_tick(NULL, SECOND_UNIT);
-
-    Layer *window_layer=window_get_root_layer(window);
-	layer_add_child(window_layer, text_layer_get_layer(label));
-	layer_add_child(window_layer, text_layer_get_layer(token));
-	layer_add_child(window_layer, text_layer_get_layer(ticker));
 
     window_set_click_config_provider(window, (ClickConfigProvider) click_config_provider);
     
@@ -326,16 +272,6 @@ void init(void) {
 
 void deinit(void) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "deinit called");
-    
-    //store timezone in persistence storage if needed
-    if (tZone != tZone_orig) {
-        if (tZone == DEFAULT_TIME_ZONE) persist_delete(KEY_TZONE) ;
-        else {
-            // store to watch
-            persist_write_int(KEY_TZONE, tZone) ;
-            // storing to phone here has no effect (the message is never received by the JS)
-        }
-    }
     
     //save selected token
     if (curToken != curToken_orig) {
