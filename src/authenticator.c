@@ -1,6 +1,5 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include <pebble.h>
+#include <time.h>
 
 #include "configuration.h"
 
@@ -12,18 +11,11 @@ extern void showEditTimeZone();
 
 #define SHA1_SIZE 20
 
-#define MY_UUID { 0xA4, 0xA6, 0x13, 0xB5, 0x8A, 0x6B, 0x4F, 0xF0, 0xBD, 0x80, 0x00, 0x38, 0xA1, 0x51, 0xCD, 0x86 }
-PBL_APP_INFO(MY_UUID,
-		"Authenticator", "pokey9000/IEF/rigel314",
-		1, 1, /* App version */
-		RESOURCE_ID_IMAGE_MENU_ICON,
-		APP_INFO_STANDARD_APP);
+Window *window;
 
-Window window;
-
-TextLayer label;
-TextLayer token;
-TextLayer ticker;
+TextLayer *label;
+TextLayer *token;
+TextLayer *ticker;
 int curToken = 0;
 int tZone;
 bool changed;
@@ -237,30 +229,28 @@ uint8_t* sha1_resultHmac(sha1nfo *s) {
 
 int curSeconds=0;
 
-uint32_t get_epoch_seconds() {
-	PblTm current_time;
+uint32_t get_epoch_seconds(struct tm *current_time) {
 	uint32_t unix_time;
-	get_time(&current_time);
 	
 // shamelessly stolen from WhyIsThisOpen's Unix Time source: http://forums.getpebble.com/discussion/4324/watch-face-unix-time
 	/* Convert time to seconds since epoch. */
 	//curSeconds=current_time.tm_sec;
 	unix_time = ((0-tZone)*3600) + /* time zone offset */          /* 0-tZone+current_time.tm_isdst if it ever starts working. */
-		+ current_time.tm_sec /* start with seconds */
-		+ current_time.tm_min*60 /* add minutes */
-		+ current_time.tm_hour*3600 /* add hours */
-		+ current_time.tm_yday*86400 /* add days */
-		+ (current_time.tm_year-70)*31536000 /* add years since 1970 */
-		+ ((current_time.tm_year-69)/4)*86400 /* add a day after leap years, starting in 1973 */                                                                       - ((current_time.tm_year-1)/100)*86400 /* remove a leap day every 100 years, starting in 2001 */                                                               + ((current_time.tm_year+299)/400)*86400; /* add a leap day back every 400 years, starting in 2001*/
+		+ current_time->tm_sec /* start with seconds */
+		+ current_time->tm_min*60 /* add minutes */
+		+ current_time->tm_hour*3600 /* add hours */
+		+ current_time->tm_yday*86400 /* add days */
+		+ (current_time->tm_year-70)*31536000 /* add years since 1970 */
+		+ ((current_time->tm_year-69)/4)*86400 /* add a day after leap years, starting in 1973 */                                                                       - ((current_time->tm_year-1)/100)*86400 /* remove a leap day every 100 years, starting in 2001 */                                                               + ((current_time->tm_year+299)/400)*86400; /* add a leap day back every 400 years, starting in 2001*/
 	unix_time /= 30;
 	return unix_time;
 }
 
 
-void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
+void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
-	(void)t;
-	(void)ctx;
+	(void)tick_time;
+	(void)units_changed;
 
 	static char tokenText[] = "RYRYRY"; // Needs to be static because it's used by the system later.
 
@@ -269,11 +259,15 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	uint32_t otp;
 	int i;
 	uint32_t unix_time;
+	time_t my_time;
 	char sha1_time[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-	PblTm curTime;
-	get_time(&curTime);
-	curSeconds = curTime.tm_sec;
+	if (!tick_time) {
+		my_time = time(NULL);
+		tick_time = localtime(&my_time);
+	}
+
+	curSeconds = tick_time->tm_sec;
 
 	if(curSeconds == 0 || curSeconds == 30 || changed)
 	{
@@ -282,7 +276,7 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 		// TOTP uses seconds since epoch in the upper half of an 8 byte payload
 		// TOTP is HOTP with a time based payload
 		// HOTP is HMAC with a truncation function to get a short decimal key
-		unix_time = get_epoch_seconds();
+		unix_time = get_epoch_seconds(tick_time);
 		sha1_time[4] = (unix_time >> 24) & 0xFF;
 		sha1_time[5] = (unix_time >> 16) & 0xFF;
 		sha1_time[6] = (unix_time >> 8) & 0xFF;
@@ -313,28 +307,28 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 
 		char *labelText = otplabels[curToken];
 
-		text_layer_set_text(&label, labelText);
-		text_layer_set_text(&token, tokenText);
+		text_layer_set_text(label, labelText);
+		text_layer_set_text(token, tokenText);
 	}
 
 	if ((curSeconds>=0) && (curSeconds<30)) {
-		text_layer_set_text(&ticker, itoa((30-curSeconds),10));
+		text_layer_set_text(ticker, itoa((30-curSeconds),10));
 	} else {
-		text_layer_set_text(&ticker, itoa((60-curSeconds),10));
+		text_layer_set_text(ticker, itoa((60-curSeconds),10));
 	}
 }
 
-void up_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
+void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if (curToken==0) {
 		curToken=NUM_SECRETS-1;
 	} else {
 		curToken--;
 	};
 	changed = true;
-	handle_second_tick(NULL,NULL);
+	handle_second_tick(NULL,0);
 }
 
-void down_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
+void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
   (void)recognizer;
   (void)window;
 	if ((curToken+1)==NUM_SECRETS) {
@@ -343,72 +337,72 @@ void down_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
 		curToken++;
 	};
 	changed = true;
-	handle_second_tick(NULL,NULL);
+	handle_second_tick(NULL,0);
 }
 
-void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
+void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	(void)recognizer;
 	(void)window;
 
 	showEditTimeZone();
 }
 
-void click_config_provider(ClickConfig **config, Window *window) {
-  (void)window;
+void click_config_provider(void *context) {
+  (void)context;
 
-  config[BUTTON_ID_UP]->click.handler = (ClickHandler) up_single_click_handler;
-  config[BUTTON_ID_UP]->click.repeat_interval_ms = 100;
+  window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, up_single_click_handler);
 
-  config[BUTTON_ID_DOWN]->click.handler = (ClickHandler) down_single_click_handler;
-  config[BUTTON_ID_DOWN]->click.repeat_interval_ms = 100;
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, down_single_click_handler);
 
-  config[BUTTON_ID_SELECT]->click.handler = (ClickHandler) select_single_click_handler;
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
 }
 
-void handle_init(AppContextRef ctx) {
-	(void)ctx;
+void handle_deinit() {
+	text_layer_destroy(ticker);
+	text_layer_destroy(token);
+	text_layer_destroy(label);
+	window_destroy(window);
+}
+
+void handle_init() {
+	tick_timer_service_subscribe(SECOND_UNIT, &handle_second_tick);
 
 	tZone = DEFAULT_TIME_ZONE;
 	changed = true;
 
-	window_init(&window, "auth");
-	window_stack_push(&window, true /* Animated */);
-	window_set_background_color(&window, GColorBlack);
+	window = window_create();
+	window_stack_push(window, true /* Animated */);
+	window_set_background_color(window, GColorBlack);
 
 	// Init the identifier label
-	text_layer_init(&label, GRect(5, 30, 144-4, 168-44));
-	text_layer_set_text_color(&label, GColorWhite);
-	text_layer_set_background_color(&label, GColorClear);
-	text_layer_set_font(&label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+	label = text_layer_create(GRect(5, 30, 144-4, 168-44));
+	text_layer_set_text_color(label, GColorWhite);
+	text_layer_set_background_color(label, GColorClear);
+	text_layer_set_font(label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 
 	// Init the token label
-	text_layer_init(&token, GRect(10, 60, 144-4 /* width */, 168-44 /* height */));
-	text_layer_set_text_color(&token, GColorWhite);
-	text_layer_set_background_color(&token, GColorClear);
-	text_layer_set_font(&token, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
+	token = text_layer_create(GRect(10, 60, 144-4 /* width */, 168-44 /* height */));
+	text_layer_set_text_color(token, GColorWhite);
+	text_layer_set_background_color(token, GColorClear);
+	text_layer_set_font(token, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
 
 	// Init the second ticker
-	text_layer_init(&ticker, GRect(60, 120, 144-4 /* width */, 168-44 /* height */));
-	text_layer_set_text_color(&ticker, GColorWhite);
-	text_layer_set_background_color(&ticker, GColorClear);
-	text_layer_set_font(&ticker, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	ticker = text_layer_create(GRect(60, 120, 144-4 /* width */, 168-44 /* height */));
+	text_layer_set_text_color(ticker, GColorWhite);
+	text_layer_set_background_color(ticker, GColorClear);
+	text_layer_set_font(ticker, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 
-	handle_second_tick(ctx, NULL);
-	layer_add_child(&window.layer, &label.layer);
-	layer_add_child(&window.layer, &token.layer);
-	layer_add_child(&window.layer, &ticker.layer);
+	handle_second_tick(NULL, 0);
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(label));
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(token));
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(ticker));
 
-	window_set_click_config_provider(&window, (ClickConfigProvider) click_config_provider);
+	window_set_click_config_provider(window, click_config_provider);
 }
 
 
-void pbl_main(void *params) {
-	PebbleAppHandlers handlers = {
-		.init_handler = &handle_init,
-		.tick_info = {
-			.tick_handler = &handle_second_tick,
-			.tick_units = SECOND_UNIT
-		}
-	};
-	app_event_loop(params, &handlers);
+int main() {
+	handle_init();
+	app_event_loop();
+	handle_deinit();
 }
