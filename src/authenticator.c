@@ -224,29 +224,6 @@ uint8_t* sha1_resultHmac(sha1nfo *s) {
 
 /* end sha1.c */
 
-// return seconds since epoch compensating for Pebble's lack of location
-// independent GMT
-
-int curSeconds=0;
-
-uint32_t get_epoch_seconds(struct tm *current_time) {
-	uint32_t unix_time;
-	
-// shamelessly stolen from WhyIsThisOpen's Unix Time source: http://forums.getpebble.com/discussion/4324/watch-face-unix-time
-	/* Convert time to seconds since epoch. */
-	//curSeconds=current_time.tm_sec;
-	unix_time = ((0-tZone)*3600) + /* time zone offset */          /* 0-tZone+current_time.tm_isdst if it ever starts working. */
-		+ current_time->tm_sec /* start with seconds */
-		+ current_time->tm_min*60 /* add minutes */
-		+ current_time->tm_hour*3600 /* add hours */
-		+ current_time->tm_yday*86400 /* add days */
-		+ (current_time->tm_year-70)*31536000 /* add years since 1970 */
-		+ ((current_time->tm_year-69)/4)*86400 /* add a day after leap years, starting in 1973 */                                                                       - ((current_time->tm_year-1)/100)*86400 /* remove a leap day every 100 years, starting in 2001 */                                                               + ((current_time->tm_year+299)/400)*86400; /* add a leap day back every 400 years, starting in 2001*/
-	unix_time /= 30;
-	return unix_time;
-}
-
-
 void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 
 	(void)tick_time;
@@ -258,25 +235,22 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 	uint8_t ofs;
 	uint32_t otp;
 	int i;
+	int curSeconds;
+
 	uint32_t unix_time;
-	time_t my_time;
 	char sha1_time[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-	if (!tick_time) {
-		my_time = time(NULL);
-		tick_time = localtime(&my_time);
-	}
+	unix_time = time(NULL) - (tZone*3600);
+	curSeconds = unix_time % 30;
 
-	curSeconds = tick_time->tm_sec;
-
-	if(curSeconds == 0 || curSeconds == 30 || changed)
+	if(curSeconds == 0 || changed)
 	{
 		changed = false;
 
 		// TOTP uses seconds since epoch in the upper half of an 8 byte payload
 		// TOTP is HOTP with a time based payload
 		// HOTP is HMAC with a truncation function to get a short decimal key
-		unix_time = get_epoch_seconds(tick_time);
+		unix_time /= 30;
 		sha1_time[4] = (unix_time >> 24) & 0xFF;
 		sha1_time[5] = (unix_time >> 16) & 0xFF;
 		sha1_time[6] = (unix_time >> 8) & 0xFF;
@@ -311,11 +285,7 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 		text_layer_set_text(token, tokenText);
 	}
 
-	if ((curSeconds>=0) && (curSeconds<30)) {
-		text_layer_set_text(ticker, itoa((30-curSeconds),10));
-	} else {
-		text_layer_set_text(ticker, itoa((60-curSeconds),10));
-	}
+	text_layer_set_text(ticker, itoa((30-curSeconds),10));
 }
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
