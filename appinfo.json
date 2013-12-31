@@ -8,7 +8,14 @@
   "watchapp": {
     "watchface": false
   },
-  "appKeys": {},
+  "appKeys": {
+    "messageType": 0,
+    "secretIndex": 1,
+    "secretLabel": 2,
+    "secretKey": 3,
+    "numSecrets": 4,
+    "timeZone": 5
+  },
   "resources": {
     "media": [
       {

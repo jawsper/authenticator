@@ -1,8 +1,15 @@
 #include <pebble.h>
 #include <time.h>
 
-#include "configuration.h"
 #include "sha1.h"
+#include "messaging.h"
+#include "data.h"
+
+int num_secrets = 0;
+char otplabels[MAX_SECRETS][LABEL_MAXSIZE] = {};
+unsigned char otpkeys[MAX_SECRETS][KEY_MAXSIZE] = {};
+int otpsizes[MAX_SECRETS] = {};
+time_t last_tzone_sync = 0;
 
 // defined in editTzone.c
 extern void showEditTimeZone();
@@ -18,7 +25,7 @@ TextLayer *label;
 TextLayer *token;
 TextLayer *ticker;
 int curToken = 0;
-int tZone;
+int tZone = 0;
 bool changed;
 
 char* itoa(int val, int base){
@@ -48,8 +55,31 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 	unix_time = time(NULL) - (tZone*3600);
 	curSeconds = unix_time % 30;
 
-	if(curSeconds == 0 || changed)
-	{
+	if (curToken >= num_secrets && num_secrets > 0) {
+		curToken = num_secrets - 1;
+	}
+
+	if (num_secrets == 0) {
+		text_layer_set_text(label, "Loading...");
+		text_layer_set_text(token, "------");
+	} else if (otpsizes[curToken] <= 0) {
+		if (strlen(otplabels[curToken])) {
+			text_layer_set_text(label, otplabels[curToken]);
+		} else {
+			text_layer_set_text(label, "Loading...");
+		}
+		switch(otpsizes[curToken]) {
+			case KERR_UNINITIALIZED:
+				text_layer_set_text(token,"------");
+				break;
+			case KERR_MAXSIZE:
+				text_layer_set_text(token,"-----.");
+				break;
+			default:
+				text_layer_set_text(token,"......");
+				break;
+		}
+	} else if (curSeconds == 0 || changed) {
 		changed = false;
 
 		// TOTP uses seconds since epoch in the upper half of an 8 byte payload
@@ -94,8 +124,10 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
-	if (curToken==0) {
-		curToken=NUM_SECRETS-1;
+	if (num_secrets == 0) {
+		curToken = 0;
+	} else if (curToken==0) {
+		curToken=num_secrets-1;
 	} else {
 		curToken--;
 	};
@@ -106,7 +138,9 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
   (void)recognizer;
   (void)window;
-	if ((curToken+1)==NUM_SECRETS) {
+	if (num_secrets == 0) {
+		curToken = 0;
+	} else if ((curToken+1)==num_secrets) {
 		curToken=0;
 	} else {
 		curToken++;
@@ -142,7 +176,8 @@ void handle_deinit() {
 void handle_init() {
 	tick_timer_service_subscribe(SECOND_UNIT, &handle_second_tick);
 
-	tZone = DEFAULT_TIME_ZONE;
+	messaging_init();
+
 	changed = true;
 
 	window = window_create();
@@ -173,6 +208,10 @@ void handle_init() {
 	layer_add_child(window_get_root_layer(window), text_layer_get_layer(ticker));
 
 	window_set_click_config_provider(window, click_config_provider);
+
+	if (time(NULL) > last_tzone_sync + 3600 || num_secrets == 0) {
+		messaging_request_configuration();
+	}
 }
 
 
