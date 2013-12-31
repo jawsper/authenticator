@@ -57,10 +57,20 @@ void zone_click_config_provider(void *context) {
 	window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, zone_down);
 }
 
+void zone_unload (Window *window) {
+	text_layer_destroy(setZoneW_disclaim);
+	text_layer_destroy(setZoneW_label);
+	text_layer_destroy(setZoneW_zone);
+	window_destroy(window);
+}
+
 void showEditTimeZone()
 {
 	setZoneW = window_create();
 	window_set_background_color(setZoneW, GColorBlack);
+	window_set_window_handlers(setZoneW, (WindowHandlers) {
+			.unload = zone_unload
+		});
 
 	strcpy(gmt, "UTC");
 	strcpy(gmt+3, itoa2(tZone,10));
