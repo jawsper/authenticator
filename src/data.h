@@ -10,7 +10,7 @@ extern char otplabels[][LABEL_MAXSIZE];
 extern unsigned char otpkeys[][KEY_MAXSIZE];
 extern int otpsizes[];
 extern time_t last_tzone_sync;
-extern int tZone;
+extern int utc_offset;
 extern bool changed;
 
 enum KEYERROR {

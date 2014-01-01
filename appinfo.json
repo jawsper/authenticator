@@ -15,7 +15,7 @@
     "secretLabel": 2,
     "secretKey": 3,
     "numSecrets": 4,
-    "timeZone": 5
+    "curTime": 5
   },
   "resources": {
     "media": [

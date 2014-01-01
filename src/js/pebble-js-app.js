@@ -50,7 +50,7 @@ function sendConfiguration() {
   sendMessage({
     messageType: MSG_SET_CONFIGURATION,
     numSecrets: secrets.length,
-    timeZone: timezone
+    curTime: Math.floor(Date.now()/1000)
   });
   if (secrets.length == 0) {
     var message = {

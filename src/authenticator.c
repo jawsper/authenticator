@@ -11,9 +11,6 @@ unsigned char otpkeys[MAX_SECRETS][KEY_MAXSIZE] = {};
 int otpsizes[MAX_SECRETS] = {};
 time_t last_tzone_sync = 0;
 
-// defined in editTzone.c
-extern void showEditTimeZone();
-
 // Truncate n decimal digits to 2^n for 6 digits
 #define DIGITS_TRUNCATE 1000000
 
@@ -25,7 +22,7 @@ TextLayer *label;
 TextLayer *token;
 TextLayer *ticker;
 int curToken = 0;
-int tZone = 0;
+int utc_offset = 0;
 bool changed;
 
 char* itoa(int val, int base){
@@ -52,7 +49,7 @@ void handle_second_tick(struct tm *tick_time, TimeUnits units_changed) {
 	uint32_t unix_time;
 	char sha1_time[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-	unix_time = time(NULL) - (tZone*3600);
+	unix_time = time(NULL) - utc_offset;
 	curSeconds = unix_time % 30;
 
 	if (curToken >= num_secrets && num_secrets > 0) {
@@ -149,21 +146,12 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	handle_second_tick(NULL,0);
 }
 
-void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
-	(void)recognizer;
-	(void)window;
-
-	showEditTimeZone();
-}
-
 void click_config_provider(void *context) {
   (void)context;
 
   window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, up_single_click_handler);
 
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, down_single_click_handler);
-
-  window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
 }
 
 void handle_deinit() {

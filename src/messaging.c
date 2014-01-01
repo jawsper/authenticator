@@ -39,15 +39,16 @@ static void secret_handler(DictionaryIterator *received) {
 }
 
 static void configuration_handler(DictionaryIterator *received) {
-	Tuple *numsecs_t, *zone_t;
-	int numsecs;
+	Tuple *numsecs_t, *curtime_t;
+	int numsecs, curtime;
 
 	numsecs_t = dict_find(received, AKEY_NUM_SECRETS);
-	zone_t = dict_find(received, AKEY_TIMEZONE);
+	curtime_t = dict_find(received, AKEY_CURTIME);
 
 	numsecs = numsecs_t->value->int32;
+	curtime = curtime_t->value->int32;
 
-	APP_LOG(APP_LOG_LEVEL_INFO, "Received configuration: %d secrets, UTC%+d", numsecs, (int)zone_t->value->int32);
+	APP_LOG(APP_LOG_LEVEL_INFO, "Received configuration: %d secrets, epoch %d", numsecs, curtime);
 
 	if (numsecs > MAX_SECRETS) {
 		APP_LOG(APP_LOG_LEVEL_ERROR, "%d secrets is out of range!", numsecs);
@@ -56,8 +57,9 @@ static void configuration_handler(DictionaryIterator *received) {
 
 	num_secrets = numsecs;
 
-	tZone = zone_t->value->int32;
+	utc_offset = time(NULL) - curtime;
 	last_tzone_sync = time(NULL);
+	APP_LOG(APP_LOG_LEVEL_INFO, "New UTC offset: %d", utc_offset);
 }
 
 static void out_sent_handler(DictionaryIterator *sent, void *context) {
