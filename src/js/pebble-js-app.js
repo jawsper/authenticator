@@ -1,7 +1,7 @@
 var secrets = [
   {
     label: "fake",
-    key: [ 0x7C, 0x94, 0x50, 0xEA, 0xA7, 0x2A, 0x08, 0x66, 0xA3, 0x47 ]
+    key: "pskfb2vhfiegni2h"
   }
 ];
 
@@ -48,14 +48,13 @@ function sendMessage(payload) {
   }
 }
 
-
 function sendConfiguration() {
   for (var s = 0; s < secrets.length; s++) {
     var message = {
       messageType: MSG_SET_SECRET,
       secretIndex: s,
       secretLabel: secrets[s].label,
-      secretKey: secrets[s].key
+      secretKey: b32decode(secrets[s].key)
     }
     sendMessage(message);
   }
@@ -83,3 +82,41 @@ Pebble.addEventListener("ready",
     sendReady();
   }
 );
+
+var b32decode = (function() {
+  var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  var alias = { 0:'O', 1:'L', 8:'B' };
+
+  var lookup = {}
+  for (var i = 0; i < alphabet.length; i++) {
+      lookup[alphabet[i]] = i
+  }
+  for (var key in alias) {
+      if (!alias.hasOwnProperty(key)) continue
+      lookup[key] = lookup['' + alias[key]]
+  }
+
+  function b32decode(input) {
+    var bits = 0;
+    var value = 0;
+    var output = [];
+
+    for (var i = 0; i < input.length; i++) {
+      var cval = lookup[input[i].toUpperCase()];
+      if (cval == null) continue;
+      bits += 5;
+      value <<= 5;
+      value |= cval;
+      if (bits >= 8) {
+        bits -= 8;
+        output.push(value >>> bits);
+        console.log('got value 0x' + (value >>> bits).toString(16));
+        value %= (1 << bits);
+      }
+    }
+
+    return output;
+  }
+
+  return b32decode;
+})();
