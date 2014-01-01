@@ -96,6 +96,7 @@ function configPanelReturn(e) {
     }
   }
   sendConfiguration();
+  localStorage.secrets = JSON.stringify(secrets);
 }
 
 Pebble.addEventListener("ready",
@@ -103,6 +104,9 @@ Pebble.addEventListener("ready",
     Pebble.addEventListener("appmessage", appMessageListener);
     Pebble.addEventListener("showConfiguration", showConfigPanel);
     Pebble.addEventListener("webviewclosed", configPanelReturn);
+    if (localStorage && localStorage.secrets) {
+      secrets = JSON.parse(localStorage.secrets) || [];
+    }
     console.log("JavaScript app ready and running!");
   }
 );
