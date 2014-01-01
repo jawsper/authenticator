@@ -2,8 +2,8 @@
 #define DATA_H
 
 #define MAX_SECRETS 10
-#define LABEL_MAXSIZE 10
-#define KEY_MAXSIZE 10
+#define LABEL_MAXSIZE 16
+#define KEY_MAXSIZE 20
 
 extern int num_secrets;
 extern char otplabels[][LABEL_MAXSIZE];

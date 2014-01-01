@@ -52,6 +52,15 @@ function sendConfiguration() {
     numSecrets: secrets.length,
     timeZone: timezone
   });
+  if (secrets.length == 0) {
+    var message = {
+      messageType: MSG_SET_SECRET,
+      secretIndex: 0,
+      secretLabel: "(no accounts)",
+      secretKey: []
+    }
+    sendMessage(message);
+  }
 }
 
 function appMessageListener(e) {
