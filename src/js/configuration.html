@@ -1,0 +1,64 @@
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
+<script type="text/javascript">
+var settings = __JSON__;
+
+function newSecret(idx) {
+  var secret = $('#secret_prototype').clone();
+  secret.attr('id','');
+  secret.show();
+  secret.find('input').data('secret-idx', idx);
+  secret.appendTo('#secrets');
+  return secret;
+}
+
+$(function() {
+  for (var s = 0; s < settings.secrets.length; s++) {
+    var secret = settings.secrets[s];
+    var elem = newSecret(s);
+    elem.find('input[name=label]').val(secret.label);
+    elem.find('input[name=key]').val('(saved)').attr('disabled',true);
+  }
+
+  $('#secrets').delegate('input:enabled', 'change', function() {
+    var secretIdx = $(this).data('secret-idx');
+    settings.secrets[secretIdx][this.name] = $(this).val();
+  });
+
+  $('#addsecret').click(function() {
+    newSecret(settings.secrets.length);
+    settings.secrets.push({
+      label: '',
+      key: ''
+    });
+  });
+
+  $('#save').click(function() {
+    window.location = "pebblejs://close#"+JSON.stringify(settings);
+  });
+
+  $('#cancel').click(function() {
+    window.location = "pebblejs://close";
+  });
+});
+</script>
+</head>
+<body>
+  <h1>Pebble Authenticator configuration</h1>
+  <h3>Accounts:</h3>
+  <div id="secrets"></div>
+  <p><a href="#" id="addsecret">Add new account</a></p>
+  <p>To delete a secret, clear the account name and click Save.</p>
+  <p>
+    <input type="button" id="save" value="Save">
+    <input type="button" id="cancel" value="Cancel">
+  </p>
+  <div id="secret_prototype" class="secret" style="display:none">
+    Account name:
+    <input name="label"><br>
+    Secret:
+    <input name="key">
+  </div>
+</body>
+</html>

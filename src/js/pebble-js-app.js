@@ -1,21 +1,10 @@
-var secrets = [
-  {
-    label: "fake",
-    key: "pskfb2vhfiegni2h"
-  }
-];
+var secrets = [];
 
 var timezone = -5;
 
 var MSG_GET_CONFIGURATION = 0;
 var MSG_SET_CONFIGURATION = 1;
 var MSG_SET_SECRET = 2;
-
-function sendReady() {
-  Pebble.sendAppMessage({
-    messageType: PHO_READY
-  }, function(e) {}, function(e) {});
-}
 
 var globalMsgIdx = 0;
 var messageQueue = [];
@@ -75,11 +64,37 @@ function appMessageListener(e) {
   }
 }
 
+function showConfigPanel() {
+  var configInfo = {
+    "secrets": secrets
+  };
+  var configJson = JSON.stringify(configInfo);
+  while (configJson.length % 3) {
+    configJson += ' ';
+  }
+  var url = "data:text/html;base64,"+htmlpre+btoa(configJson)+htmlpost;
+  Pebble.openURL(url);
+}
+
+function configPanelReturn(e) {
+  var response = JSON.parse(e.response);
+  if (!response || !response.secrets) return;
+  secrets = response.secrets;
+  for (var s = 0; s < secrets.length; s++) {
+    if (secrets[s].key.trim().length == 0 || secrets[s].label.trim().length == 0) {
+      secrets.splice(s, 1);
+      s--;
+    }
+  }
+  sendConfiguration();
+}
+
 Pebble.addEventListener("ready",
   function(e) {
     Pebble.addEventListener("appmessage", appMessageListener);
+    Pebble.addEventListener("showConfiguration", showConfigPanel);
+    Pebble.addEventListener("webviewclosed", configPanelReturn);
     console.log("JavaScript app ready and running!");
-    sendReady();
   }
 );
 
@@ -110,7 +125,6 @@ var b32decode = (function() {
       if (bits >= 8) {
         bits -= 8;
         output.push(value >>> bits);
-        console.log('got value 0x' + (value >>> bits).toString(16));
         value %= (1 << bits);
       }
     }

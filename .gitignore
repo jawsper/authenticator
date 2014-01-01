@@ -1,8 +1,5 @@
 
 # Ignore build generated files
 build
+generated
 .lock-waf_linux2_build
-
-# Ignore configuration files that contain secrets
-configuration.txt
-src/configuration.h

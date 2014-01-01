@@ -2,6 +2,7 @@
   "uuid": "a4a613b5-8a6b-4ff0-bd80-0038a151cd86",
   "shortName": "Authenticator",
   "longName": "Authenticator",
+  "capabilities": [ "configurable" ],
   "companyName": "pokey9000/IEF/rigel314",
   "versionCode": 1,
   "versionLabel": "1.1.0",
