@@ -146,12 +146,19 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	handle_second_tick(NULL,0);
 }
 
+void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
+	num_secrets = 0;
+	messaging_request_configuration();
+}
+
 void click_config_provider(void *context) {
   (void)context;
 
   window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, up_single_click_handler);
 
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, down_single_click_handler);
+
+  window_long_click_subscribe(BUTTON_ID_SELECT, 0, select_long_click_handler, NULL);
 }
 
 void handle_deinit() {
