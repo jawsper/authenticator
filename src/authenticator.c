@@ -21,6 +21,8 @@ TextLayer *token;
 TextLayer *ticker;
 InverterLayer *bar;
 
+static PropertyAnimation *bar_animation=NULL;
+
 int curToken;
 int curToken_orig;
 
@@ -57,7 +59,7 @@ PropertyAnimation * create_bar_animation(int second) {
  * @param second the ticker second (0 < s <= 30)
  */
 void animate_bar(int second) {
-    static PropertyAnimation *bar_animation=NULL;
+    
     static bool fullanimation=false ;
     
     //first call, create and run partial bar
@@ -281,10 +283,13 @@ void deinit(void) {
     
     destroyEditTimeZone();
     tick_timer_service_unsubscribe();
+    property_animation_destroy(bar_animation);
     text_layer_destroy(label) ;
     text_layer_destroy(token) ;
     text_layer_destroy(ticker) ;
+    inverter_layer_destroy(bar) ;
     window_destroy(window);
+    app_message_deregister_callbacks();
 }
 
 int main() {
