@@ -27,7 +27,7 @@ inform it of the new timezone or it will generate incorrect passwords.
 Credits
 -------
 
-pokey9000: Initial implementation, called 'twostep'
-IEF: Support for multiple tokens and labels, new user interface
-rigel314: optimizations and changing timezone support
-Danielle Church: SDK 2.0 support, JS configuration, on-watch storage
+pokey9000: Initial implementation, called 'twostep'  
+IEF: Support for multiple tokens and labels, new user interface  
+rigel314: optimizations and changing timezone support  
+Danielle Church: SDK 2.0 support, JS configuration, on-watch storage  
