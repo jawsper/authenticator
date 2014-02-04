@@ -13,7 +13,6 @@ Pebble Authenticator
 
 # Ignore linked files/directories
 waf
-wscript
 tools
 include
 lib
