@@ -30,8 +30,7 @@ char * min_to_hour(char *s,size_t max, int val) {
     max--;
     val=abs(val);
     
-    struct tm to_convert={.tm_min=val%60,.tm_hour=val/60,
-        .tm_isdst=0};
+    struct tm to_convert={.tm_min=val%60,.tm_hour=val/60,.tm_isdst=0};
     strftime(p, max, "%H:%M", &to_convert);
     return s;
 }

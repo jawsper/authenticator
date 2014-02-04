@@ -1,5 +1,6 @@
 Authenticator
 =============
+![](Screenshot.png)
 
 Forked off 'authenticator' by IEF, which was forked off 'twostep' by pokey9000, this is Authenticator for Pebble, with patches from rigel314, updated to PebbleSDK-2.0 by Didier Arenzana.
 
