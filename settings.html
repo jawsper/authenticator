@@ -1,0 +1,135 @@
+<!-- based on http://darenzana.free.fr/Pebble/Authenticator/index-dev.html -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Pebble Authenticator</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!-- Bootstrap -->
+        <link href="http://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+            <h3>Authenticator</h3>
+            20131127-01
+            </div>
+            <form role="form">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="timezone">Time Zone (minutes)</label>
+                            <input type="text" class="form-control" name="timezone" id="timezone">
+                        </div>
+                    </div>
+                </div>
+            <!--
+                <div class = "row">
+                    <div class="col-xs-1">
+                        <select class="form-control" id="tz-hour">
+                            <option>-11</option>
+                            <option>-10</option>
+                            <option>-9</option>
+                            <option>-8</option>
+                            <option>-7</option>
+                            <option>-6</option>
+                            <option>-5</option>
+                            <option>-4</option>
+                            <option>-3</option>
+                            <option>-2</option>
+                            <option>-1</option>
+                            <option>0</option>
+                            <option>+1</option>
+                            <option>+2</option>
+                            <option>+3</option>
+                            <option>+4</option>
+                            <option>+5</option>
+                            <option>+6</option>
+                            <option>+7</option>
+                            <option>+8</option>
+                            <option>+9</option>
+                            <option>+10</option>
+                            <option>+11</option>
+                            <option>+12</option>
+                            <option>+13</option>
+                            <option>+14</option>
+                        </select>
+                    </div>
+                    <div class="col-xs-1">H</div>
+                    <div class="col-xs-1">
+                        <select class="form-control" id="tz-min">
+                            <option>00</option>
+                            <option>30</option>
+                        </select>
+                    </div>
+                </div>
+             -->
+                <div class="row">
+                    <div class="col-xs-6">
+                        <button type="submit" class="btn btn-primary btn-block" id="b-submit">Submit</button>
+                    </div>
+                    <div class="col-xs-6">
+                        <button class="btn btn-block" id="b-cancel">Cancel</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+        <script src="https://code.jquery.com/jquery.js"></script>
+        <script src="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+        <!-- Include all compiled plugins (below), or include individual files as needed -->
+        <script src="http://netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js"></script>
+        <script>
+            function saveOptions() {
+                var options = {
+                    'timezone': $("#timezone").val()
+                }
+                return options;
+            }
+        function ConvertOptions(options) {
+            var timezone = $("#timezone").val();
+            timezone = parseInt(timezone,10) ;
+            if (isNaN(timezone) || timezone > 14*60 || timezone < -11*60) return false ;
+            options.timezone=timezone ;
+            return options ;
+        }
+        // from http://snipplr.com/view/26662/get-url-parameters-with-jquery--improved/
+        $.urlParam = function(name){
+            var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            if (!results) { return 0; }
+            return results[1] || 0;
+        }
+        
+        function updateControls() {
+            var timezone = decodeURIComponent($.urlParam("timezone"));
+            if (timezone != '') {
+                $("#timezone").val(timezone);
+            }
+        }
+        
+        $().ready(function() {
+                  updateControls();
+                  $("#b-cancel").click(function() {
+                                       console.log("Cancel");
+                                       document.location = "pebblejs://close";
+                                       return true;
+                                       });
+                  
+                  $("#b-submit").click(function() {
+                                       console.log("Submit");
+                                       var options = ConvertOptions(saveOptions());
+                                       if (options == false) {
+                                       alert("invalid form values!");
+                                       return false ;
+                                       }
+                                       var location = "pebblejs://close#" + encodeURIComponent(JSON.stringify(options));
+                                       console.log("Warping to: " + location);
+                                       console.log(location);
+                                       document.location = location;
+                                       return true;
+                                       });
+                  
+                  });
+        
+        </script>
+    </body>
+</html>
