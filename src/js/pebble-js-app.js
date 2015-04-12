@@ -29,7 +29,7 @@ Pebble.addEventListener("ready", readyEventListener);
 //! called when the user presses the config button on the phone app.
 function showConfigurationEventListener() {
     console.log("showing configuration");
-    var confURL="http://darenzana.free.fr/Pebble/Authenticator/index-dev.html" ;
+    var confURL="http://jawsper.github.io/authenticator/settings.html" ;
     if (!isNaN(timezone)) confURL += "?timezone=" + timezone ;
     console.log("URL :" + confURL);
     Pebble.openURL(confURL);
